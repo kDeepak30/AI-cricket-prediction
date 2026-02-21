@@ -37,18 +37,28 @@ with tab1:
     ]
 
     if st.button("Predict Performance"):
-        if len(player_data) > 0:
-            X_input = player_data.drop(
-                columns=["target_runs_next_match", "target_wickets_next_match"],
-                errors="ignore"
-            ).iloc[0:1]
 
-            pred_runs = runs_model.predict(X_input)[0]
-            pred_wkts = wkts_model.predict(X_input)[0]
+        if len(player_data) > 0:
+
+            # Ensure required columns exist (prevents feature mismatch)
+            required_runs_cols = runs_model.feature_names_in_
+            required_wkts_cols = wkts_model.feature_names_in_
+
+            X_input_runs = player_data.reindex(columns=required_runs_cols, fill_value=0).iloc[0:1]
+            X_input_wkts = player_data.reindex(columns=required_wkts_cols, fill_value=0).iloc[0:1]
+
+            # Convert to numeric (fix LightGBM dtype error)
+            X_input_runs = X_input_runs.apply(pd.to_numeric, errors="coerce").fillna(0)
+            X_input_wkts = X_input_wkts.apply(pd.to_numeric, errors="coerce").fillna(0)
+
+            # Make predictions
+            pred_runs = runs_model.predict(X_input_runs)[0]
+            pred_wkts = wkts_model.predict(X_input_wkts)[0]
 
             colA, colB = st.columns(2)
             colA.metric("Predicted Runs", round(pred_runs, 2))
             colB.metric("Predicted Wickets", round(pred_wkts, 2))
+
         else:
             st.warning("No historical data found for this selection.")
 
