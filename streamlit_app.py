@@ -66,25 +66,27 @@ with tab2:
     st.dataframe(results)
     st.bar_chart(results.set_index("Model")[["R2"]])
 
+
 # ------------------- TAB 3 -------------------
 with tab3:
     st.header("Feature Importance")
 
-    importances = runs_model.feature_importances_
-    features = data.drop(
-        columns=["target_runs_next_match", "target_wickets_next_match"],
-        errors="ignore"
-    ).columns
+    try:
+        features = runs_model.feature_names_in_
+        importances = runs_model.feature_importances_
 
-    imp_df = pd.DataFrame({
-        "Feature": features,
-        "Importance": importances
-    }).sort_values(by="Importance", ascending=False)
+        imp_df = pd.DataFrame({
+            "Feature": features,
+            "Importance": importances
+        }).sort_values(by="Importance", ascending=False)
 
-    st.dataframe(imp_df.head(10))
+        st.subheader("Top 10 Important Features")
+        st.dataframe(imp_df.head(10))
 
-    fig, ax = plt.subplots()
-    ax.barh(imp_df["Feature"][:10], imp_df["Importance"][:10])
-    ax.invert_yaxis()
-    st.pyplot(fig)
+        fig, ax = plt.subplots()
+        ax.barh(imp_df["Feature"][:10], imp_df["Importance"][:10])
+        ax.invert_yaxis()
+        st.pyplot(fig)
 
+    except Exception as e:
+        st.write("Feature importance not available:", e)
