@@ -2,48 +2,35 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import joblib
-import os
 import matplotlib.pyplot as plt
 
 st.set_page_config(page_title="IPL Performance Predictor", layout="wide")
 
-# ---------------- PATHS ----------------
-MODELS_DIR = "models"
-ENCODERS_DIR = "label_encoders"
-
-# ---------------- LOAD MODELS ----------------
+# ================= LOAD MODELS =================
 try:
-    runs_model = joblib.load(os.path.join(MODELS_DIR, "best_model_runs.pkl"))
-    wkts_model = joblib.load(os.path.join(MODELS_DIR, "best_model_wkts.pkl"))
-    scaler_wkts = joblib.load(os.path.join(MODELS_DIR, "scaler_wkts.pkl"))
+    runs_model = joblib.load("best_model_runs.pkl")
+    wkts_model = joblib.load("best_model_wkts.pkl")
+    scaler_wkts = joblib.load("scaler_wkts.pkl")
     st.sidebar.success("Models loaded successfully")
 except Exception as e:
     st.sidebar.error(f"Model loading error: {e}")
     runs_model, wkts_model, scaler_wkts = None, None, None
 
-# ---------------- LOAD ENCODERS ----------------
-loaded_encoders = {}
-if os.path.exists(ENCODERS_DIR):
-    for file in os.listdir(ENCODERS_DIR):
-        if file.endswith(".pkl"):
-            col = file.replace("label_encoder_", "").replace(".pkl", "")
-            loaded_encoders[col] = joblib.load(os.path.join(ENCODERS_DIR, file))
-
-# ---------------- LOAD DATA ----------------
+# ================= LOAD DATA =================
 try:
     data = pd.read_csv("final_dataset.csv")
     st.sidebar.success("Dataset loaded successfully")
-except:
-    st.sidebar.error("Dataset not found")
+except Exception as e:
+    st.sidebar.error(f"Dataset loading error: {e}")
     data = pd.DataFrame()
 
 st.title("🏏 IPL Player Performance Prediction Dashboard")
 
 tab1, tab2, tab3 = st.tabs(["🎯 Prediction", "📊 Model Metrics", "🔍 Feature Importance"])
 
-# ======================================================
-# ================= TAB 1 ==============================
-# ======================================================
+# ============================================================
+# ===================== TAB 1: Prediction ====================
+# ============================================================
 with tab1:
     st.header("Player Match Prediction")
 
@@ -51,10 +38,10 @@ with tab1:
         st.error("Models or dataset not loaded properly.")
     else:
 
-        all_strikers = sorted(data["striker"].unique())
-        all_bowlers = sorted(data["bowler"].unique())
-        all_teams = sorted(data["batting_team"].unique())
-        all_venues = sorted(data["venue"].unique())
+        all_strikers = sorted(data["striker"].dropna().unique())
+        all_bowlers = sorted(data["bowler"].dropna().unique())
+        all_teams = sorted(data["batting_team"].dropna().unique())
+        all_venues = sorted(data["venue"].dropna().unique())
 
         col1, col2 = st.columns(2)
 
@@ -70,7 +57,7 @@ with tab1:
 
         if st.button("Predict Performance"):
 
-            # ---------------- BATSMAN FILTER ----------------
+            # --------- BATSMAN FILTER ----------
             batsman_data = data[
                 (data["striker"] == selected_batsman) &
                 (data["batting_team"] == selected_batsman_team) &
@@ -79,7 +66,6 @@ with tab1:
             ]
 
             if not batsman_data.empty:
-
                 required_runs_cols = runs_model.feature_names_in_
 
                 X_runs = batsman_data.reindex(
@@ -90,13 +76,13 @@ with tab1:
                 X_runs = X_runs.apply(pd.to_numeric, errors="coerce").fillna(0)
 
                 predicted_runs = runs_model.predict(X_runs)[0]
+
                 st.metric(f"Predicted Runs for {selected_batsman}",
                           f"{predicted_runs:.2f}")
-
             else:
                 st.warning("No historical batting data found.")
 
-            # ---------------- BOWLER FILTER ----------------
+            # --------- BOWLER FILTER ----------
             bowler_data = data[
                 (data["bowler"] == selected_bowler) &
                 (data["bowling_team"] == selected_bowler_team) &
@@ -105,7 +91,6 @@ with tab1:
             ]
 
             if not bowler_data.empty:
-
                 required_wkts_cols = wkts_model.feature_names_in_
 
                 X_wkts = bowler_data.reindex(
@@ -121,20 +106,20 @@ with tab1:
                     X_wkts[numeric_cols] = scaler_wkts.transform(X_wkts[numeric_cols])
 
                 predicted_wickets = wkts_model.predict(X_wkts)[0]
+
                 st.metric(f"Predicted Wickets for {selected_bowler}",
                           f"{predicted_wickets:.2f}")
-
             else:
                 st.warning("No historical bowling data found.")
 
-# ======================================================
-# ================= TAB 2 ==============================
-# ======================================================
+# ============================================================
+# ===================== TAB 2: Metrics =======================
+# ============================================================
 with tab2:
     st.header("Model Performance Comparison")
 
     results = pd.DataFrame({
-        "Model": ["LightGBM Runs", "Poisson Wickets"],
+        "Model": ["LightGBM (Runs)", "Poisson (Wickets)"],
         "RMSE": [23.68, 1.006],
         "MAE": [17.25, 0.814],
         "R2": [-0.13, -0.017]
@@ -148,14 +133,13 @@ with tab2:
     ax.set_title("Model R2 Comparison")
     st.pyplot(fig)
 
-# ======================================================
-# ================= TAB 3 ==============================
-# ======================================================
+# ============================================================
+# ===================== TAB 3: Feature Importance ============
+# ============================================================
 with tab3:
     st.header("Feature Importance")
 
     if runs_model is not None:
-
         features_runs = runs_model.feature_names_in_
         importances_runs = runs_model.feature_importances_
 
@@ -174,7 +158,6 @@ with tab3:
         st.pyplot(fig)
 
     if wkts_model is not None:
-
         features_wkts = wkts_model.feature_names_in_
 
         if hasattr(wkts_model, "coef_"):
