@@ -69,6 +69,7 @@ with tab1:
 
             # ---------- RUNS ----------
             if not batsman_data.empty:
+
                 required_runs_cols = runs_model.feature_names_in_
 
                 X_runs = batsman_data.reindex(
@@ -80,11 +81,15 @@ with tab1:
 
                 predicted_runs = runs_model.predict(X_runs)[0]
 
+                # Clip runs to realistic range
+                predicted_runs = max(0, predicted_runs)
+
                 st.success(f"🏏 Predicted Runs: {predicted_runs:.2f}")
                 prediction_made = True
 
             # ---------- WICKETS ----------
             if not bowler_data.empty:
+
                 required_wkts_cols = wkts_model.feature_names_in_
 
                 X_wkts = bowler_data.reindex(
@@ -95,6 +100,10 @@ with tab1:
                 X_wkts = X_wkts.apply(pd.to_numeric, errors="coerce").fillna(0)
 
                 predicted_wickets = wkts_model.predict(X_wkts)[0]
+
+                # Clip wickets between 0 and 6
+                predicted_wickets = max(0, predicted_wickets)
+                predicted_wickets = min(predicted_wickets, 6)
 
                 st.success(f"🎯 Predicted Wickets: {predicted_wickets:.2f}")
                 prediction_made = True
