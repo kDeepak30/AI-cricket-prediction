@@ -51,83 +51,14 @@ with tab1:
 
         if st.button("Predict Performance"):
 
-            # ================= CHECK IF BATSMAN =================
+            # ===== Check Batsman =====
             batsman_data = data[
                 (data["striker"] == player) &
                 (data["bowling_team"] == opponent) &
                 (data["venue"] == venue)
             ]
 
-            # ================= CHECK IF BOWLER =================
-            bowler_data = data[
-                (data["bowler"] == player) &
-                (data["batting_team"] == opponent) &
-                (data["venue"] == venue)
-            ]
-
-            # ----------- RUNS PREDICTION -----------
-            if not batsman_data.empty:
-
-                required_runs_cols = runs_model.feature_names_in_
-
-                X_runs = batsman_data.reindex(
-                    columns=required_runs_cols,
-                    fill_value=0
-                ).iloc[0:1]
-
-                X_runs = X_runs.apply(pd.to_numeric, errors="coerce").fillna(0)
-
-                predicted_runs = runs_model.predict(X_runs)[0]
-
-                st.success(f"🏏 Predicted Runs: {predicted_runs:.2f}")
-
-            # ----------- WICKETS PREDICTION -----------
-            if not bowler_data.empty:
-
-    required_wkts_cols = wkts_model.feature_names_in_
-
-    X_wkts = bowler_data.reindex(
-        columns=required_wkts_cols,
-        fill_value=0
-    ).iloc[0:1]
-
-    X_wkts = X_wkts.apply(pd.to_numeric, errors="coerce").fillna(0)
-
-    # ⚠️ Do NOT apply scaler (avoids feature mismatch error)
-    predicted_wickets = wkts_model.predict(X_wkts)[0]
-
-    st.success(f"🎯 Predicted Wickets: {predicted_wickets:.2f}")# ============================================================
-# ===================== TAB 1: Prediction ====================
-# ============================================================
-with tab1:
-    st.header("Player Match Prediction")
-
-    if data.empty or runs_model is None or wkts_model is None:
-        st.error("Models or dataset not loaded properly.")
-    else:
-
-        all_players = sorted(
-            set(data["striker"].dropna().unique())
-            .union(set(data["bowler"].dropna().unique()))
-        )
-
-        all_teams = sorted(data["batting_team"].dropna().unique())
-        all_venues = sorted(data["venue"].dropna().unique())
-
-        player = st.selectbox("Select Player", all_players)
-        opponent = st.selectbox("Select Opponent Team", all_teams)
-        venue = st.selectbox("Select Venue", all_venues)
-
-        if st.button("Predict Performance"):
-
-            # ================= CHECK IF BATSMAN =================
-            batsman_data = data[
-                (data["striker"] == player) &
-                (data["bowling_team"] == opponent) &
-                (data["venue"] == venue)
-            ]
-
-            # ================= CHECK IF BOWLER =================
+            # ===== Check Bowler =====
             bowler_data = data[
                 (data["bowler"] == player) &
                 (data["batting_team"] == opponent) &
@@ -136,9 +67,8 @@ with tab1:
 
             prediction_made = False
 
-            # ----------- RUNS PREDICTION -----------
+            # ---------- RUNS ----------
             if not batsman_data.empty:
-
                 required_runs_cols = runs_model.feature_names_in_
 
                 X_runs = batsman_data.reindex(
@@ -153,9 +83,8 @@ with tab1:
                 st.success(f"🏏 Predicted Runs: {predicted_runs:.2f}")
                 prediction_made = True
 
-            # ----------- WICKETS PREDICTION -----------
+            # ---------- WICKETS ----------
             if not bowler_data.empty:
-
                 required_wkts_cols = wkts_model.feature_names_in_
 
                 X_wkts = bowler_data.reindex(
@@ -165,7 +94,6 @@ with tab1:
 
                 X_wkts = X_wkts.apply(pd.to_numeric, errors="coerce").fillna(0)
 
-                # ❌ No scaler applied (avoids feature mismatch error)
                 predicted_wickets = wkts_model.predict(X_wkts)[0]
 
                 st.success(f"🎯 Predicted Wickets: {predicted_wickets:.2f}")
