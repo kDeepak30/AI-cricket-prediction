@@ -38,34 +38,30 @@ with tab1:
         st.error("Models or dataset not loaded properly.")
     else:
 
-        all_strikers = sorted(data["striker"].dropna().unique())
-        all_bowlers = sorted(data["bowler"].dropna().unique())
+        all_players = sorted(
+            set(data["striker"].dropna().unique()).union(
+                set(data["bowler"].dropna().unique())
+            )
+        )
+
         all_teams = sorted(data["batting_team"].dropna().unique())
         all_venues = sorted(data["venue"].dropna().unique())
 
-        col1, col2 = st.columns(2)
-
-        with col1:
-            selected_batsman = st.selectbox("Select Batsman", all_strikers)
-            selected_batsman_team = st.selectbox("Batsman's Team", all_teams)
-            selected_venue = st.selectbox("Venue", all_venues)
-
-        with col2:
-            selected_bowler = st.selectbox("Select Bowler", all_bowlers)
-            selected_bowler_team = st.selectbox("Bowler's Team", all_teams)
-            selected_opponent_team = st.selectbox("Opponent Team", all_teams)
+        player = st.selectbox("Select Player", all_players)
+        opponent = st.selectbox("Select Opponent Team", all_teams)
+        venue = st.selectbox("Select Venue", all_venues)
 
         if st.button("Predict Performance"):
 
-            # --------- BATSMAN FILTER ----------
+            # ===== BATSMAN CHECK =====
             batsman_data = data[
-                (data["striker"] == selected_batsman) &
-                (data["batting_team"] == selected_batsman_team) &
-                (data["bowling_team"] == selected_opponent_team) &
-                (data["venue"] == selected_venue)
+                (data["striker"] == player) &
+                (data["bowling_team"] == opponent) &
+                (data["venue"] == venue)
             ]
 
             if not batsman_data.empty:
+
                 required_runs_cols = runs_model.feature_names_in_
 
                 X_runs = batsman_data.reindex(
@@ -77,20 +73,19 @@ with tab1:
 
                 predicted_runs = runs_model.predict(X_runs)[0]
 
-                st.metric(f"Predicted Runs for {selected_batsman}",
-                          f"{predicted_runs:.2f}")
-            else:
-                st.warning("No historical batting data found.")
+                st.success(f"Predicted Runs for {player}: {predicted_runs:.2f}")
+                st.stop()
 
-            # --------- BOWLER FILTER ----------
+
+            # ===== BOWLER CHECK =====
             bowler_data = data[
-                (data["bowler"] == selected_bowler) &
-                (data["bowling_team"] == selected_bowler_team) &
-                (data["batting_team"] == selected_opponent_team) &
-                (data["venue"] == selected_venue)
+                (data["bowler"] == player) &
+                (data["batting_team"] == opponent) &
+                (data["venue"] == venue)
             ]
 
             if not bowler_data.empty:
+
                 required_wkts_cols = wkts_model.feature_names_in_
 
                 X_wkts = bowler_data.reindex(
@@ -100,18 +95,12 @@ with tab1:
 
                 X_wkts = X_wkts.apply(pd.to_numeric, errors="coerce").fillna(0)
 
-                # Scale if scaler exists
-                if scaler_wkts is not None:
-                    numeric_cols = X_wkts.select_dtypes(include=np.number).columns
-                    X_wkts[numeric_cols] = scaler_wkts.transform(X_wkts[numeric_cols])
-
                 predicted_wickets = wkts_model.predict(X_wkts)[0]
 
-                st.metric(f"Predicted Wickets for {selected_bowler}",
-                          f"{predicted_wickets:.2f}")
-            else:
-                st.warning("No historical bowling data found.")
+                st.success(f"Predicted Wickets for {player}: {predicted_wickets:.2f}")
+                st.stop()
 
+            st.warning("No historical data found for this player under selected conditions.")
 # ============================================================
 # ===================== TAB 2: Metrics =======================
 # ============================================================
