@@ -27,89 +27,69 @@ except Exception as e:
 st.title("🏏 IPL Player Performance Prediction Dashboard")
 
 tab1, tab2, tab3 = st.tabs(["🎯 Prediction", "📊 Model Metrics", "🔍 Feature Importance"])
-# ============================================================
-# ===================== TAB 1: Prediction ====================
-# ============================================================
-with tab1:
-    st.header("Player Match Prediction")
+if st.button("Predict Performance"):
 
-    if data.empty or runs_model is None or wkts_model is None:
-        st.error("Models or dataset not loaded properly.")
-    else:
+    # Check if player appears as batsman
+    batsman_data = data[
+        (data["striker"] == player) &
+        (data["bowling_team"] == opponent) &
+        (data["venue"] == venue)
+    ]
 
-        all_players = sorted(
-            set(data["striker"].dropna().unique())
-            .union(set(data["bowler"].dropna().unique()))
-        )
+    # Check if player appears as bowler
+    bowler_data = data[
+        (data["bowler"] == player) &
+        (data["batting_team"] == opponent) &
+        (data["venue"] == venue)
+    ]
 
-        all_teams = sorted(data["batting_team"].dropna().unique())
-        all_venues = sorted(data["venue"].dropna().unique())
+    prediction_made = False
 
-        player = st.selectbox("Select Player", all_players)
-        opponent = st.selectbox("Select Opponent Team", all_teams)
-        venue = st.selectbox("Select Venue", all_venues)
+    # ========================
+    # BOWLER → WICKETS ONLY
+    # ========================
+    if not bowler_data.empty:
 
-        if st.button("Predict Performance"):
+        required_wkts_cols = wkts_model.feature_names_in_
 
-            # ===== Check Batsman =====
-            batsman_data = data[
-                (data["striker"] == player) &
-                (data["bowling_team"] == opponent) &
-                (data["venue"] == venue)
-            ]
+        X_wkts = bowler_data.reindex(
+            columns=required_wkts_cols,
+            fill_value=0
+        ).iloc[0:1]
 
-            # ===== Check Bowler =====
-            bowler_data = data[
-                (data["bowler"] == player) &
-                (data["batting_team"] == opponent) &
-                (data["venue"] == venue)
-            ]
+        X_wkts = X_wkts.apply(pd.to_numeric, errors="coerce").fillna(0)
 
-            prediction_made = False
+        raw_pred = wkts_model.predict(X_wkts)[0]
 
-            # ---------- RUNS ----------
-            if not batsman_data.empty:
+        # Normalize + realistic limit
+        predicted_wickets = raw_pred / 4
+        predicted_wickets = max(0, min(predicted_wickets, 5))
 
-                required_runs_cols = runs_model.feature_names_in_
+        st.success(f"🎯 Predicted Wickets: {predicted_wickets:.2f}")
+        prediction_made = True
 
-                X_runs = batsman_data.reindex(
-                    columns=required_runs_cols,
-                    fill_value=0
-                ).iloc[0:1]
+    # ========================
+    # BATSMAN → RUNS ONLY
+    # ========================
+    elif not batsman_data.empty:
 
-                X_runs = X_runs.apply(pd.to_numeric, errors="coerce").fillna(0)
+        required_runs_cols = runs_model.feature_names_in_
 
-                predicted_runs = runs_model.predict(X_runs)[0]
+        X_runs = batsman_data.reindex(
+            columns=required_runs_cols,
+            fill_value=0
+        ).iloc[0:1]
 
-                # Clip runs to realistic range
-                predicted_runs = max(0, predicted_runs)
+        X_runs = X_runs.apply(pd.to_numeric, errors="coerce").fillna(0)
 
-                st.success(f"🏏 Predicted Runs: {predicted_runs:.2f}")
-                prediction_made = True
+        predicted_runs = runs_model.predict(X_runs)[0]
+        predicted_runs = max(0, predicted_runs)
 
-            # ---------- WICKETS ----------
-            if not bowler_data.empty:
+        st.success(f"🏏 Predicted Runs: {predicted_runs:.2f}")
+        prediction_made = True
 
-                required_wkts_cols = wkts_model.feature_names_in_
-
-                X_wkts = bowler_data.reindex(
-                    columns=required_wkts_cols,
-                    fill_value=0
-                ).iloc[0:1]
-
-                X_wkts = X_wkts.apply(pd.to_numeric, errors="coerce").fillna(0)
-
-                predicted_wickets = wkts_model.predict(X_wkts)[0]
-
-                # Clip wickets between 0 and 6
-                predicted_wickets = max(0, predicted_wickets)
-                predicted_wickets = min(predicted_wickets, 6)
-
-                st.success(f"🎯 Predicted Wickets: {predicted_wickets:.2f}")
-                prediction_made = True
-
-            if not prediction_made:
-                st.warning("No historical data found for this player under selected conditions.")
+    if not prediction_made:
+        st.warning("No historical data found for this player under selected conditions.")
 # ============================================================
 # ===================== TAB 2: Metrics =======================
 # ============================================================
